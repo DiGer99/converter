@@ -20,7 +20,14 @@ class Parser:
         return res
     
 
-    def check_array(self, token: str) -> bool:
+    @staticmethod
+    def _split_strip(token: str, split_: bool = True, chars: str = "<>/") -> str:
+        if split_:
+            return token.split()[0].strip(chars)
+        return token.strip(chars)
+    
+
+    def _check_array(self, token: str) -> bool:
         """
             Проверка содержания списка types в токенах
         """
@@ -29,7 +36,6 @@ class Parser:
         return res
 
         
-
     def convert_join(self) -> None:
         stack: list[str] = []
         res: str = self.get_doc()
@@ -42,12 +48,12 @@ class Parser:
                 if symbol == "<" and res[indx + 1] == "/": # закрывающий токен </
                     left_key = indx - 1
                     right_key = indx # <
-                    if res[indx - 1] not in ("<>/"): # ищем и записываем значение внутри токена 
+                    if res[indx - 1] not in ("<>/"): # ищем и записываем значение между токенами 
                         while res[left_key] != ">":
                             left_key -= 1
                         doc.write(f'"{res[left_key + 1: right_key]}"')
                     
-                    cursor = doc.tell()
+                    # cursor = doc.tell()
                     end_stack = stack.pop()
 
                     next_open_key = indx + 1 if len(res) > indx + 1 else indx
@@ -66,12 +72,14 @@ class Parser:
                     if res[next_open_key + 1: next_closed_key].strip("<>/") == end_stack_for_array and res[next_closed_key + 1: second_next_closed_token].split()[0].strip("<>/") != end_stack_for_array: # закрывать
                         # массив после того как перчисления закончились
                         doc.write(f"\n{len(stack) * '\t'}}}\n{(len(stack) - 1) * '\t'}]")
+                    elif self._split_strip(res[next_open_key + 1: next_closed_key], split_=False) == self._split_strip(end_stack, split_=False):
+                        # doc.seek(cursor)
+                        doc.write(f", ")
 
                     elif res[next_open_key + 1] == "/" or next_open_key == len(res) - 2: # если следующий токен тоже закрывающий,то закрываем абзац
                         doc.write(f'\n{len(stack) * "\t"}}}')
-
                     else:
-                        doc.seek(cursor)
+                        # doc.seek(cursor)
                         doc.write(",\n")
                     
                 elif symbol == "<": # открывающий токен <
@@ -79,19 +87,18 @@ class Parser:
                     while res[key] != ">":
                         key += 1
                     token = res[indx: key + 1]
-                    line = f'{len(stack) * "\t"}"{token.split()[0].strip('<>')}": '  # записываем токен
-                    if end_stack and token.split()[0].strip("<>") == end_stack.split()[0].strip("<>"): # если токен равен предыдущему закрытому токену, только что удаленным из стека, 
+                    line = f'{len(stack) * "\t"}"{self._split_strip(token)}": '  # записываем токен
+                    if end_stack and self._split_strip(token) == self._split_strip(end_stack): # если токен равен предыдущему закрытому токену, только что удаленным из стека, 
                         # просто открываем новый словарь без названия токена { чтобы ключи были уникальными </Address> <Address Type="Billing">
                         doc.write(f'{(len(stack) + 1) * "\t"}{{\n')
-                    elif self.check_array(token): # если type иди другой тип в токене - то открываем список
-                        end_stack_for_array = token.split()[0].strip("<>/")
+                    elif self._check_array(token): # если type иди другой тип в токене - то открываем список
+                        end_stack_for_array = self._split_strip(token)
                         doc.write(line + f"[\n{(len(stack) + 1) * '\t'}{{\n")
                     elif res[key + 1] not in ("<>/"): # если следующий индекс не токен - значит этот токен в открытом абзаце - записываем в файл этот токен и двоеточие перед его значением
                         doc.write(line)
                     else:
                         doc.write(line + '{\n') # если следующий индекс токен, то открываем абзац
                     stack.append(token)
-                    level_inner = len(stack)
                     
 
 

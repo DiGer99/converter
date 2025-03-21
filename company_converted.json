@@ -41,14 +41,15 @@
 			"name": "AI Research",
 			"budget": "500000",
 			"team": {
-				"member": ["John Doe", "Michael Johnson"]
+				"member": "John Doe", 					{
+"Michael Johnson"
+				}
 			},
 			{
 			"name": "Product Revamp",
 			"budget": "300000",
 			"team": {
-				"member": "Jane Smith",
-					{
+				"member": "Jane Smith", 					{
 "John Doe"
 				}
 			}
